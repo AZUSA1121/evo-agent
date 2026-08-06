@@ -13,6 +13,11 @@ public record ReviewReport(
         int changedFileCount,
         int totalAdditions,
         int totalDeletions,
+        String aiSummary,
+        String riskLevel,
+        List<String> keyChanges,
+        List<String> testSuggestions,
+        List<String> contextFiles,
         List<PullRequestFile> changedFiles,
         List<Finding> findings,
         Instant createdAt
