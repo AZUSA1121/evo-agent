@@ -1,6 +1,9 @@
 package com.example.evoagent.agent;
 
 import org.springframework.stereotype.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -13,6 +16,8 @@ import java.util.Map;
 
 @Component
 public class DeepSeekClient {
+
+    private static final Logger log = LoggerFactory.getLogger(DeepSeekClient.class);
 
     private static final String DEFAULT_MODEL = "deepseek-v4-flash";
     private static final String API_URL = "https://api.deepseek.com/chat/completions";
@@ -76,12 +81,38 @@ public class DeepSeekClient {
             }
 
             String content = chatResponse.choices().get(0).message().content();
-            return objectMapper.readValue(content, DeepSeekReviewResponse.class);
+            try {
+                return objectMapper.readValue(content, DeepSeekReviewResponse.class);
+            } catch (JacksonException e) {
+                log.warn("DeepSeek returned invalid JSON review content. content={}", abbreviate(content), e);
+                return invalidJsonFallback();
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to call or parse DeepSeek API response", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("DeepSeek API request interrupted", e);
         }
+    }
+
+    private DeepSeekReviewResponse invalidJsonFallback() {
+        return new DeepSeekReviewResponse(
+                "DeepSeek 已返回审查内容，但返回格式不是合法 JSON，系统已降级生成本报告。建议重新触发一次 review；如果多次出现，可以继续收紧 prompt 或增加 JSON 修复步骤。",
+                "MEDIUM",
+                List.of("DeepSeek API 调用成功，但模型输出格式不稳定，导致结构化 findings 无法解析。"),
+                List.of("重新 Redeliver 对应的 pull_request 事件，确认是否为偶发模型输出格式问题。"),
+                List.of()
+        );
+    }
+
+    private String abbreviate(String value) {
+        if (value == null) {
+            return "";
+        }
+        int maxLength = 1000;
+        if (value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength) + "...";
     }
 }
