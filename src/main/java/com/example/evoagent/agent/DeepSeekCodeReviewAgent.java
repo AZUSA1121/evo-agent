@@ -65,6 +65,8 @@ public class DeepSeekCodeReviewAgent {
                 5. 本项目特定场景：GitHub API 调用、DeepSeek API 调用、PR Webhook 异步执行、Code RAG 上下文使用、Markdown Review 报告生成。
 
                 返回内容必须是合法 JSON，不要输出 Markdown，不要输出 JSON 之外的文字。
+                所有字段值都必须是 JSON 字符串、数字、数组或对象；字符串中的英文双引号必须转义为 \\"，换行必须转义为 \\n。
+                evidence 和 suggestion 里不要粘贴大段源码；如果必须引用代码，只引用方法名、类名、字段名或一行以内的短片段。
                 JSON 结构必须严格如下：
                 {
                   "summary": "中文总体评价，2到4句话。说明本次 PR 做了什么、整体风险如何、是否建议合并。",
