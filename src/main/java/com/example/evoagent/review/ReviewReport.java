@@ -13,6 +13,7 @@ public record ReviewReport(
         int changedFileCount,
         int totalAdditions,
         int totalDeletions,
+        List<String> contextFiles,
         List<PullRequestFile> changedFiles,
         List<Finding> findings,
         Instant createdAt
