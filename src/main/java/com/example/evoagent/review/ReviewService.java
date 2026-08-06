@@ -1,5 +1,6 @@
 package com.example.evoagent.review;
 
+import com.example.evoagent.agent.DeepSeekReviewResponse;
 import com.example.evoagent.agent.DeepSeekCodeReviewAgent;
 import com.example.evoagent.github.GitHubClient;
 import com.example.evoagent.github.PullRequestFile;
@@ -47,7 +48,8 @@ public class ReviewService {
         List<String> contextFiles = reviewContext.codeContexts().stream()
                 .map(context -> context.path())
                 .toList();
-        List<Finding> findings = codeReviewAgent.review(files, reviewContext);
+        DeepSeekReviewResponse aiReview = codeReviewAgent.review(files, reviewContext);
+        List<Finding> findings = aiReview.findings();
         String summary = "PR #%d in %s contains %d changed files, %d additions, and %d deletions."
                 .formatted(prNumber, repoFullName, files.size(), totalAdditions, totalDeletions);
 
@@ -59,6 +61,10 @@ public class ReviewService {
                 files.size(),
                 totalAdditions,
                 totalDeletions,
+                aiReview.summary(),
+                aiReview.riskLevel(),
+                aiReview.keyChanges(),
+                aiReview.testSuggestions(),
                 contextFiles,
                 files,
                 findings,

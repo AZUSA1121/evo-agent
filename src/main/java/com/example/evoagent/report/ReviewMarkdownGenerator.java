@@ -11,18 +11,20 @@ public class ReviewMarkdownGenerator {
 
     public String generate(ReviewReport report) {
         StringBuilder markdown = new StringBuilder();
-        markdown.append("# AI PR Review Report\n\n");
+        markdown.append("# AI PR 代码审查报告\n\n");
 
-        markdown.append("## Summary\n\n");
-        markdown.append("- Repository: `").append(report.repo()).append("`\n");
+        markdown.append("## PR 概览\n\n");
+        markdown.append("- 仓库: `").append(report.repo()).append("`\n");
         markdown.append("- PR: `#").append(report.prNumber()).append("`\n");
-        markdown.append("- Status: `").append(report.status()).append("`\n");
-        markdown.append("- Changed files: `").append(report.changedFileCount()).append("`\n");
-        markdown.append("- Additions: `").append(report.totalAdditions()).append("`\n");
-        markdown.append("- Deletions: `").append(report.totalDeletions()).append("`\n");
-        markdown.append("- Findings: `").append(report.findings().size()).append("`\n\n");
+        markdown.append("- 状态: `").append(report.status()).append("`\n");
+        markdown.append("- 风险等级: `").append(nullToText(report.riskLevel())).append("`\n");
+        markdown.append("- 变更文件: `").append(report.changedFileCount()).append("`\n");
+        markdown.append("- 新增行数: `").append(report.totalAdditions()).append("`\n");
+        markdown.append("- 删除行数: `").append(report.totalDeletions()).append("`\n");
+        markdown.append("- 发现问题: `").append(report.findings().size()).append("`\n\n");
         markdown.append(report.summary()).append("\n\n");
 
+        appendAiSummary(markdown, report);
         appendContextFiles(markdown, report.contextFiles());
         appendFindings(markdown, report.findings());
 
@@ -31,10 +33,21 @@ public class ReviewMarkdownGenerator {
         return markdown.toString();
     }
 
+    private void appendAiSummary(StringBuilder markdown, ReviewReport report) {
+        markdown.append("## AI 审查结论\n\n");
+        markdown.append(nullToText(report.aiSummary())).append("\n\n");
+
+        markdown.append("### 重点变更\n\n");
+        appendTextList(markdown, report.keyChanges(), "DeepSeek 未返回明确的重点变更。");
+
+        markdown.append("### 建议测试\n\n");
+        appendTextList(markdown, report.testSuggestions(), "建议至少运行项目现有测试，并手动验证本次 PR 涉及的核心流程。");
+    }
+
     private void appendContextFiles(StringBuilder markdown, List<String> contextFiles) {
-        markdown.append("## Context Used\n\n");
+        markdown.append("## 使用的 Code RAG 上下文\n\n");
         if (contextFiles == null || contextFiles.isEmpty()) {
-            markdown.append("No code context was retrieved.\n\n");
+            markdown.append("未检索到额外源码上下文。\n\n");
             return;
         }
 
@@ -45,9 +58,9 @@ public class ReviewMarkdownGenerator {
     }
 
     private void appendFindings(StringBuilder markdown, List<Finding> findings) {
-        markdown.append("## Findings\n\n");
+        markdown.append("## 风险发现\n\n");
         if (findings == null || findings.isEmpty()) {
-            markdown.append("No obvious issue found.\n");
+            markdown.append("未发现明确的安全、可靠性或性能问题。\n");
             return;
         }
 
@@ -56,14 +69,26 @@ public class ReviewMarkdownGenerator {
             markdown.append("### ").append(index + 1).append(". ")
                     .append(nullToText(finding.level())).append(" - ")
                     .append(nullToText(finding.title())).append("\n\n");
-            markdown.append("- File: `").append(nullToText(finding.file())).append("`\n");
-            markdown.append("- Line: `").append(finding.line() == null ? "unknown" : finding.line()).append("`\n");
-            markdown.append("- Type: `").append(nullToText(finding.type())).append("`\n\n");
-            markdown.append("Evidence:\n\n");
+            markdown.append("- 文件: `").append(nullToText(finding.file())).append("`\n");
+            markdown.append("- 行号: `").append(finding.line() == null ? "unknown" : finding.line()).append("`\n");
+            markdown.append("- 类型: `").append(nullToText(finding.type())).append("`\n\n");
+            markdown.append("证据:\n\n");
             markdown.append(nullToText(finding.evidence())).append("\n\n");
-            markdown.append("Suggestion:\n\n");
+            markdown.append("建议:\n\n");
             markdown.append(nullToText(finding.suggestion())).append("\n\n");
         }
+    }
+
+    private void appendTextList(StringBuilder markdown, List<String> values, String emptyText) {
+        if (values == null || values.isEmpty()) {
+            markdown.append("- ").append(emptyText).append("\n\n");
+            return;
+        }
+
+        for (String value : values) {
+            markdown.append("- ").append(nullToText(value)).append("\n");
+        }
+        markdown.append("\n");
     }
 
     private String nullToText(String value) {

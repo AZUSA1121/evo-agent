@@ -2,7 +2,6 @@ package com.example.evoagent.agent;
 
 import com.example.evoagent.github.PullRequestFile;
 import com.example.evoagent.rag.ReviewContext;
-import com.example.evoagent.review.Finding;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -16,48 +15,83 @@ public class DeepSeekCodeReviewAgent {
         this.deepSeekClient = deepSeekClient;
     }
 
-    public List<Finding> review(List<PullRequestFile> files, ReviewContext reviewContext) {
+    public DeepSeekReviewResponse review(List<PullRequestFile> files, ReviewContext reviewContext) {
         String prompt = buildPrompt(files, reviewContext);
         DeepSeekReviewResponse response = deepSeekClient.reviewCode(prompt);
-        if (response.findings() == null) {
-            return List.of();
+        return normalize(response);
+    }
+
+    private DeepSeekReviewResponse normalize(DeepSeekReviewResponse response) {
+        if (response == null) {
+            return emptyReview();
         }
-        return response.findings();
+
+        return new DeepSeekReviewResponse(
+                isBlank(response.summary()) ? "未发现明显问题，建议按常规流程完成构建与回归测试。" : response.summary(),
+                isBlank(response.riskLevel()) ? "LOW" : response.riskLevel(),
+                response.keyChanges() == null ? List.of() : response.keyChanges(),
+                response.testSuggestions() == null ? List.of() : response.testSuggestions(),
+                response.findings() == null ? List.of() : response.findings()
+        );
+    }
+
+    private DeepSeekReviewResponse emptyReview() {
+        return new DeepSeekReviewResponse(
+                "未发现明显问题，建议按常规流程完成构建与回归测试。",
+                "LOW",
+                List.of(),
+                List.of("运行项目测试套件，确认 PR 修改没有引入回归。"),
+                List.of()
+        );
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private String buildPrompt(List<PullRequestFile> files, ReviewContext reviewContext) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("""
-                You are an enterprise Java code review agent.
+                你是一个面向企业 Java 后端项目的资深 Code Review Agent。
 
-                Review the GitHub pull request patch below, using the retrieved code context.
+                请用中文审查下面的 GitHub Pull Request patch，并结合检索到的完整源码上下文。
 
-                Focus on:
-                1. Security: SQL injection, permission bypass, hardcoded secrets, sensitive data leakage.
-                2. Reliability: null pointer risks, swallowed exceptions, transaction issues, Redis/MQ consistency risks.
-                3. Performance: SELECT *, N+1 queries, slow SQL risks, repeated database calls in loops.
-                4. Code quality: production logging, maintainability, risky changes.
+                你的目标不是简单挑刺，而是给研发团队一份可以直接放到 PR 评论区的审查结论。
+                请重点关注：
+                1. 安全风险：SQL 注入、权限绕过、硬编码密钥、敏感信息泄露、Webhook 签名校验缺失。
+                2. 可靠性风险：空指针、异常吞掉、事务失效、幂等性问题、Redis/MQ/外部 API 一致性问题。
+                3. 性能风险：N+1 查询、慢 SQL、循环调用数据库或远程 API、大对象/大响应体问题。
+                4. 工程质量：边界条件、错误提示、日志可观测性、可测试性、代码职责划分。
+                5. 本项目特定场景：GitHub API 调用、DeepSeek API 调用、PR Webhook 异步执行、Code RAG 上下文使用、Markdown Review 报告生成。
 
-                Return only valid json in this exact shape:
+                返回内容必须是合法 JSON，不要输出 Markdown，不要输出 JSON 之外的文字。
+                JSON 结构必须严格如下：
                 {
-                  "summary": "short review summary",
+                  "summary": "中文总体评价，2到4句话。说明本次 PR 做了什么、整体风险如何、是否建议合并。",
+                  "riskLevel": "HIGH|MEDIUM|LOW",
+                  "keyChanges": [
+                    "中文概括一个关键变更点"
+                  ],
+                  "testSuggestions": [
+                    "中文说明一个建议补充或执行的测试"
+                  ],
                   "findings": [
                     {
                       "file": "path/to/File.java",
                       "line": 12,
                       "type": "SECURITY|RELIABILITY|PERFORMANCE|CODE_QUALITY",
                       "level": "HIGH|MEDIUM|LOW",
-                      "title": "short issue title",
-                      "evidence": "why this is risky",
-                      "suggestion": "how to fix it"
+                      "title": "中文问题标题",
+                      "evidence": "中文说明风险证据，必须结合具体代码或 patch",
+                      "suggestion": "中文说明如何修复或改进"
                     }
                   ]
                 }
 
-                If no issue is found, return this json:
-                {"summary":"No obvious issue found.","findings":[]}
+                如果没有发现明确问题，也必须给出有信息量的中文 summary、keyChanges 和 testSuggestions，findings 返回空数组。
+                不要编造不存在的 bug。只有证据明确时才放入 findings。
 
-                Retrieved code context:
+                检索到的源码上下文：
                 """);
 
         if (reviewContext != null && reviewContext.codeContexts() != null) {
@@ -69,7 +103,7 @@ public class DeepSeekCodeReviewAgent {
 
         prompt.append("""
 
-                Pull request patch:
+                Pull request patch：
                 """);
 
         for (PullRequestFile file : files) {
