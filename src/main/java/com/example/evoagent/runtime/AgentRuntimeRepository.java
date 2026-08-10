@@ -2,7 +2,6 @@ package com.example.evoagent.runtime;
 
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AgentRuntimeRepository {
 
     private final Map<String, AgentTask> tasks = new ConcurrentHashMap<>();
-    private final Map<String, List<AgentExecution>> executionsByTaskId = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, AgentExecution>> executionsByTaskId = new ConcurrentHashMap<>();
     private final Map<String, RuntimeContext> checkpointsByTaskId = new ConcurrentHashMap<>();
 
     public AgentTask saveTask(AgentTask task) {
@@ -32,27 +31,22 @@ public class AgentRuntimeRepository {
     }
 
     public AgentExecution saveExecution(AgentExecution execution) {
-        List<AgentExecution> executions = executionsByTaskId.computeIfAbsent(
+        Map<String, AgentExecution> executions = executionsByTaskId.computeIfAbsent(
                 execution.taskId(),
-                ignored -> new ArrayList<>()
+                ignored -> new ConcurrentHashMap<>()
         );
-        synchronized (executions) {
-            executions.removeIf(existing -> existing.id().equals(execution.id()));
-            executions.add(execution);
-        }
+        executions.put(execution.id(), execution);
         return execution;
     }
 
     public List<AgentExecution> findExecutions(String taskId) {
-        List<AgentExecution> executions = executionsByTaskId.get(taskId);
+        Map<String, AgentExecution> executions = executionsByTaskId.get(taskId);
         if (executions == null) {
             return List.of();
         }
-        synchronized (executions) {
-            return executions.stream()
-                    .sorted(Comparator.comparing(AgentExecution::startedAt))
-                    .toList();
-        }
+        return executions.values().stream()
+                .sorted(Comparator.comparing(AgentExecution::startedAt))
+                .toList();
     }
 
     public void saveCheckpoint(String taskId, RuntimeContext context) {

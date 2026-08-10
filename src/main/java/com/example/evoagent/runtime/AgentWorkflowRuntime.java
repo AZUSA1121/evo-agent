@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Service
 public class AgentWorkflowRuntime {
@@ -16,14 +17,17 @@ public class AgentWorkflowRuntime {
     private final AgentRuntimeRepository repository;
     private final List<RuntimeNode> nodes;
     private final RuntimeFailureInjector failureInjector;
+    private final Executor agentRuntimeExecutor;
 
     public AgentWorkflowRuntime(
             AgentRuntimeRepository repository,
             List<RuntimeNode> nodes,
-            RuntimeFailureInjector failureInjector
+            RuntimeFailureInjector failureInjector,
+            Executor agentRuntimeExecutor
     ) {
         this.repository = repository;
         this.failureInjector = failureInjector;
+        this.agentRuntimeExecutor = agentRuntimeExecutor;
         this.nodes = nodes.stream()
                 .sorted(Comparator.comparingInt(node -> node.name().ordinal()))
                 .toList();
@@ -31,7 +35,7 @@ public class AgentWorkflowRuntime {
 
     public AgentTask runAsync(String taskId) {
         AgentTask task = getTask(taskId);
-        CompletableFuture.runAsync(() -> run(taskId));
+        CompletableFuture.runAsync(() -> run(taskId), agentRuntimeExecutor);
         return task;
     }
 
@@ -44,7 +48,7 @@ public class AgentWorkflowRuntime {
     public AgentTask retryAsync(String taskId) {
         AgentTask task = getTask(taskId);
         validateRetryable(task);
-        CompletableFuture.runAsync(() -> retry(taskId));
+        CompletableFuture.runAsync(() -> retry(taskId), agentRuntimeExecutor);
         return task;
     }
 

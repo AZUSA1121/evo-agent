@@ -1,6 +1,7 @@
 package com.example.evoagent.runtime.node;
 
 import com.example.evoagent.report.ReviewMarkdownGenerator;
+import com.example.evoagent.agent.DeepSeekReviewResponse;
 import com.example.evoagent.review.Finding;
 import com.example.evoagent.review.ReviewReport;
 import com.example.evoagent.runtime.AgentTask;
@@ -28,6 +29,11 @@ public class GenerateMarkdownReportNode implements RuntimeNode {
 
     @Override
     public String execute(AgentTask task, RuntimeContext context) {
+        DeepSeekReviewResponse aiReview = context.getAiReview();
+        if (aiReview == null) {
+            throw new IllegalStateException("Missing AI review result before generating markdown report");
+        }
+
         int totalAdditions = context.getPullRequestFiles().stream()
                 .map(file -> file.additions())
                 .filter(value -> value != null)
@@ -44,9 +50,9 @@ public class GenerateMarkdownReportNode implements RuntimeNode {
                 : context.getReviewContext().codeContexts().stream()
                 .map(codeContext -> codeContext.path())
                 .toList();
-        List<Finding> findings = context.getAiReview().findings() == null
+        List<Finding> findings = aiReview.findings() == null
                 ? List.of()
-                : context.getAiReview().findings();
+                : aiReview.findings();
 
         String repoFullName = task.owner() + "/" + task.repo();
         String summary = "PR #%d in %s contains %d changed files, %d additions, and %d deletions."
@@ -60,10 +66,10 @@ public class GenerateMarkdownReportNode implements RuntimeNode {
                 context.getPullRequestFiles().size(),
                 totalAdditions,
                 totalDeletions,
-                context.getAiReview().summary(),
-                context.getAiReview().riskLevel(),
-                context.getAiReview().keyChanges(),
-                context.getAiReview().testSuggestions(),
+                aiReview.summary(),
+                aiReview.riskLevel(),
+                aiReview.keyChanges(),
+                aiReview.testSuggestions(),
                 contextFiles,
                 context.getPullRequestFiles(),
                 findings,
