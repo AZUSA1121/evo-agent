@@ -21,7 +21,7 @@ public class RuntimeFailureInjector {
             failures.remove(request.nodeName());
         }
 
-        return new FailureInjectionState(request.nodeName(), request.enabled(), message);
+        return new FailureInjectionState(request.nodeName(), request.enabled(), message, true);
     }
 
     public Map<RuntimeNodeName, String> activeFailures() {
@@ -29,6 +29,7 @@ public class RuntimeFailureInjector {
     }
 
     public void failIfEnabled(RuntimeNodeName nodeName) {
+        // Failure injection is intentionally one-shot so retry/resume demos can recover without manual cleanup.
         String message = failures.remove(nodeName);
         if (message != null) {
             throw new IllegalStateException(message);
