@@ -1,16 +1,13 @@
 package com.example.evoagent.webhook;
 
-import com.example.evoagent.github.GitHubClient;
-import com.example.evoagent.report.ReviewMarkdownGenerator;
-import com.example.evoagent.review.ReviewReport;
-import com.example.evoagent.review.ReviewService;
+import com.example.evoagent.runtime.AgentRuntimeRepository;
+import com.example.evoagent.runtime.AgentTask;
+import com.example.evoagent.runtime.AgentWorkflowRuntime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
-
-import java.util.concurrent.CompletableFuture;
 
 @Service
 public class GitHubWebhookService {
@@ -18,20 +15,17 @@ public class GitHubWebhookService {
     private static final Logger log = LoggerFactory.getLogger(GitHubWebhookService.class);
 
     private final ObjectMapper objectMapper;
-    private final ReviewService reviewService;
-    private final ReviewMarkdownGenerator markdownGenerator;
-    private final GitHubClient gitHubClient;
+    private final AgentRuntimeRepository runtimeRepository;
+    private final AgentWorkflowRuntime workflowRuntime;
 
     public GitHubWebhookService(
             ObjectMapper objectMapper,
-            ReviewService reviewService,
-            ReviewMarkdownGenerator markdownGenerator,
-            GitHubClient gitHubClient
+            AgentRuntimeRepository runtimeRepository,
+            AgentWorkflowRuntime workflowRuntime
     ) {
         this.objectMapper = objectMapper;
-        this.reviewService = reviewService;
-        this.markdownGenerator = markdownGenerator;
-        this.gitHubClient = gitHubClient;
+        this.runtimeRepository = runtimeRepository;
+        this.workflowRuntime = workflowRuntime;
     }
 
     public GitHubWebhookResponse handle(String event, String payload) {
@@ -40,6 +34,7 @@ public class GitHubWebhookService {
                     "IGNORED",
                     "Only pull_request events are handled.",
                     event,
+                    null,
                     null,
                     null,
                     null,
@@ -73,6 +68,7 @@ public class GitHubWebhookService {
                         action,
                         fullName,
                         prNumber,
+                        null,
                         false,
                         null
                 );
@@ -87,35 +83,21 @@ public class GitHubWebhookService {
 
             String[] repoParts = fullName.split("/", 2);
             log.info("Accepted pull_request webhook action={} repo={} pr={}", action, fullName, prNumber);
-            runReviewAsync(repoParts[0], repoParts[1], prNumber);
+            AgentTask task = AgentTask.create(repoParts[0], repoParts[1], prNumber, "github:" + action);
+            runtimeRepository.saveTask(task);
+            workflowRuntime.runAsync(task.id());
 
             return new GitHubWebhookResponse(
                     "ACCEPTED",
-                    "Pull request review has been accepted and will run asynchronously.",
+                    "Pull request review task has been created and will run asynchronously.",
                     event,
                     action,
                     fullName,
                     prNumber,
+                    task.id(),
                     false,
                     null
             );
-    }
-
-    private void runReviewAsync(String owner, String repo, int prNumber) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                log.info("Starting AI review for {}/{} PR #{}", owner, repo, prNumber);
-                ReviewReport report = reviewService.reviewGitHubPullRequest(owner, repo, prNumber);
-                log.info("Generated AI review for {}/{} PR #{} findings={}",
-                        owner, repo, prNumber, report.findings().size());
-                String markdown = markdownGenerator.generate(report);
-                log.info("Posting AI review comment for {}/{} PR #{}", owner, repo, prNumber);
-                gitHubClient.createPullRequestComment(owner, repo, prNumber, markdown);
-                log.info("Posted AI review comment for {}/{} PR #{}", owner, repo, prNumber);
-            } catch (Exception e) {
-                log.error("Failed to review {}/{} PR #{}", owner, repo, prNumber, e);
-            }
-        });
     }
 
     private boolean shouldReview(String action) {

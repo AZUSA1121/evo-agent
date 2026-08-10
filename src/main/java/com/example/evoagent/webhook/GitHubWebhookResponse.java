@@ -9,6 +9,7 @@ public record GitHubWebhookResponse(
         String action,
         String repository,
         Integer prNumber,
+        String taskId,
         boolean commentPosted,
         ReviewReport report
 ) {
@@ -17,6 +18,7 @@ public record GitHubWebhookResponse(
                 "ignored",
                 "Ignore non pull_request event",
                 event,
+                null,
                 null,
                 null,
                 null,
