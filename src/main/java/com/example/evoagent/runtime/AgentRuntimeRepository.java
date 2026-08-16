@@ -9,6 +9,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -53,8 +54,8 @@ public class AgentRuntimeRepository {
                 task.status().name(),
                 task.currentNode() == null ? null : task.currentNode().name(),
                 task.errorMessage(),
-                task.createdAt(),
-                task.updatedAt()
+                timestamp(task.createdAt()),
+                timestamp(task.updatedAt())
         );
         return task;
     }
@@ -130,8 +131,8 @@ public class AgentRuntimeRepository {
                 execution.output(),
                 execution.retryCount(),
                 execution.errorMessage(),
-                execution.startedAt(),
-                execution.finishedAt(),
+                timestamp(execution.startedAt()),
+                timestamp(execution.finishedAt()),
                 execution.durationMs()
         );
         return execution;
@@ -162,7 +163,7 @@ public class AgentRuntimeRepository {
                         """,
                 taskId,
                 contextJson,
-                Instant.now()
+                timestamp(Instant.now())
         );
     }
 
@@ -223,6 +224,13 @@ public class AgentRuntimeRepository {
 
     private Instant instant(ResultSet rs, String columnName) throws SQLException {
         return rs.getTimestamp(columnName).toInstant();
+    }
+
+    private Timestamp timestamp(Instant instant) {
+        if (instant == null) {
+            return null;
+        }
+        return Timestamp.from(instant);
     }
 
     private Instant instantOrNull(ResultSet rs, String columnName) throws SQLException {
