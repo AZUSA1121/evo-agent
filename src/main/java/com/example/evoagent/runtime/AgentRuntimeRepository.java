@@ -24,6 +24,13 @@ public class AgentRuntimeRepository {
         return Optional.ofNullable(tasks.get(taskId));
     }
 
+    public List<AgentTask> findTasksByIdPrefix(String taskIdPrefix) {
+        return tasks.values().stream()
+                .filter(task -> task.id().startsWith(taskIdPrefix))
+                .sorted(Comparator.comparing(AgentTask::createdAt).reversed())
+                .toList();
+    }
+
     public List<AgentTask> findAllTasks() {
         return tasks.values().stream()
                 .sorted(Comparator.comparing(AgentTask::createdAt).reversed())

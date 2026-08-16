@@ -7,9 +7,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @RestController
 @RequestMapping("/api/runtime")
@@ -51,6 +55,11 @@ public class AgentRuntimeController {
                 .orElseThrow(() -> new IllegalArgumentException("Task not found: " + taskId));
     }
 
+    @GetMapping("/tasks/ref/{taskRef}")
+    public AgentTask getTaskByRef(@PathVariable String taskRef) {
+        return findTaskByRef(taskRef);
+    }
+
     @PostMapping("/tasks/{taskId}/run")
     public AgentTask runTask(@PathVariable String taskId) {
         return workflowRuntime.runAsync(taskId);
@@ -71,6 +80,12 @@ public class AgentRuntimeController {
         return repository.findExecutions(taskId);
     }
 
+    @GetMapping("/tasks/ref/{taskRef}/trace")
+    public List<AgentExecution> getTraceByRef(@PathVariable String taskRef) {
+        AgentTask task = findTaskByRef(taskRef);
+        return repository.findExecutions(task.id());
+    }
+
     @PostMapping("/failures")
     public FailureInjectionState configureFailure(@Valid @RequestBody FailureInjectionRequest request) {
         return failureInjector.configure(request);
@@ -79,5 +94,20 @@ public class AgentRuntimeController {
     @GetMapping("/failures")
     public Map<RuntimeNodeName, String> listFailures() {
         return failureInjector.activeFailures();
+    }
+
+    private AgentTask findTaskByRef(String taskRef) {
+        if (taskRef == null || taskRef.length() < 8) {
+            throw new ResponseStatusException(BAD_REQUEST, "Task ref must contain at least 8 characters.");
+        }
+
+        List<AgentTask> matches = repository.findTasksByIdPrefix(taskRef);
+        if (matches.isEmpty()) {
+            throw new ResponseStatusException(NOT_FOUND, "Task not found for ref: " + taskRef);
+        }
+        if (matches.size() > 1) {
+            throw new ResponseStatusException(BAD_REQUEST, "Task ref is ambiguous: " + taskRef);
+        }
+        return matches.get(0);
     }
 }

@@ -76,9 +76,25 @@ public class GenerateMarkdownReportNode implements RuntimeNode {
                 Instant.now()
         );
 
-        String markdown = markdownGenerator.generate(report);
+        String markdown = appendRuntimeMetadata(markdownGenerator.generate(report), task);
         context.setReviewReport(report);
         context.setMarkdownReport(markdown);
         return "markdownLength=%d findings=%d".formatted(markdown.length(), findings.size());
+    }
+
+    private String appendRuntimeMetadata(String markdown, AgentTask task) {
+        String taskRef = shortTaskRef(task.id());
+        return markdown.replaceFirst("# AI PR 代码审查报告", "# AI PR 代码审查报告 · Task Ref `" + taskRef + "`")
+                + "\n"
+                + "Runtime: `Agent Runtime Harness`\n"
+                + "Task Ref: `" + taskRef + "`\n"
+                + "Trace: available from protected runtime API.\n";
+    }
+
+    private String shortTaskRef(String taskId) {
+        if (taskId == null || taskId.length() <= 8) {
+            return taskId;
+        }
+        return taskId.substring(0, 8);
     }
 }

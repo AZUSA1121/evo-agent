@@ -82,9 +82,16 @@ public class GitHubWebhookService {
             }
 
             String[] repoParts = fullName.split("/", 2);
-            log.info("Accepted pull_request webhook action={} repo={} pr={}", action, fullName, prNumber);
             AgentTask task = AgentTask.create(repoParts[0], repoParts[1], prNumber, "github:" + action);
             runtimeRepository.saveTask(task);
+            log.info(
+                    "Created runtime task taskId={} taskRef={} action={} repo={} pr={}",
+                    task.id(),
+                    shortTaskRef(task.id()),
+                    action,
+                    fullName,
+                    prNumber
+            );
             workflowRuntime.runAsync(task.id());
 
             return new GitHubWebhookResponse(
@@ -112,5 +119,12 @@ public class GitHubWebhookService {
             return null;
         }
         return value.asText();
+    }
+
+    private String shortTaskRef(String taskId) {
+        if (taskId == null || taskId.length() <= 8) {
+            return taskId;
+        }
+        return taskId.substring(0, 8);
     }
 }
