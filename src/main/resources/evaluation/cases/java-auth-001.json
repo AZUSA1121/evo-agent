@@ -1,0 +1,34 @@
+{
+  "id": "java-auth-001",
+  "title": "Admin endpoint misses authorization check",
+  "category": "SECURITY",
+  "description": "A new admin refund endpoint does not check whether the caller has admin permission.",
+  "repo": "demo-payment-service",
+  "prNumber": 104,
+  "changedFiles": [
+    {
+      "filename": "src/main/java/com/demo/payment/AdminRefundController.java",
+      "status": "added",
+      "additions": 18,
+      "deletions": 0,
+      "changes": 18,
+      "patch": "@@ -0,0 +1,18 @@\n+@RestController\n+@RequestMapping(\"/admin/refunds\")\n+public class AdminRefundController {\n+    private final RefundService refundService;\n+\n+    @PostMapping(\"/{orderId}\")\n+    public RefundResult refund(@PathVariable Long orderId) {\n+        return refundService.refund(orderId);\n+    }\n+}\n"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "src/main/java/com/demo/payment/AdminOrderController.java",
+      "content": "package com.demo.payment;\n\n@RestController\n@RequestMapping(\"/admin/orders\")\npublic class AdminOrderController {\n    @RequireRole(\"ADMIN\")\n    @GetMapping(\"/{orderId}\")\n    public OrderDetail detail(@PathVariable Long orderId) {\n        return orderService.detail(orderId);\n    }\n}\n"
+    }
+  ],
+  "expectedFindings": [
+    {
+      "id": "expected-missing-admin-auth",
+      "file": "src/main/java/com/demo/payment/AdminRefundController.java",
+      "type": "SECURITY",
+      "level": "HIGH",
+      "title": "Admin refund endpoint lacks authorization",
+      "keywords": ["authorization", "RequireRole", "ADMIN", "refund", "access control"]
+    }
+  ]
+}

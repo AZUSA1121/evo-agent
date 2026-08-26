@@ -1,0 +1,34 @@
+{
+  "id": "java-redis-cache-001",
+  "title": "Database update does not invalidate Redis cache",
+  "category": "RELIABILITY",
+  "description": "Product price update writes to DB but leaves product cache stale.",
+  "repo": "demo-catalog-service",
+  "prNumber": 106,
+  "changedFiles": [
+    {
+      "filename": "src/main/java/com/demo/catalog/ProductService.java",
+      "status": "modified",
+      "additions": 8,
+      "deletions": 1,
+      "changes": 9,
+      "patch": "@@ -35,6 +35,13 @@ public class ProductService {\n+    public void updatePrice(Long productId, BigDecimal price) {\n+        productMapper.updatePrice(productId, price);\n+    }\n }"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "src/main/java/com/demo/catalog/ProductService.java",
+      "content": "package com.demo.catalog;\n\n@Service\npublic class ProductService {\n    private final ProductMapper productMapper;\n    private final StringRedisTemplate redisTemplate;\n\n    public ProductDetail getProduct(Long productId) {\n        String key = \"product:\" + productId;\n        String cached = redisTemplate.opsForValue().get(key);\n        if (cached != null) {\n            return Json.parse(cached, ProductDetail.class);\n        }\n        ProductDetail detail = productMapper.findDetail(productId);\n        redisTemplate.opsForValue().set(key, Json.stringify(detail));\n        return detail;\n    }\n}\n"
+    }
+  ],
+  "expectedFindings": [
+    {
+      "id": "expected-cache-invalidation",
+      "file": "src/main/java/com/demo/catalog/ProductService.java",
+      "type": "RELIABILITY",
+      "level": "MEDIUM",
+      "title": "Price update leaves Redis cache stale",
+      "keywords": ["Redis", "cache", "invalidate", "delete", "stale"]
+    }
+  ]
+}

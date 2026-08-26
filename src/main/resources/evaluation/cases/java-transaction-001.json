@@ -1,0 +1,34 @@
+{
+  "id": "java-transaction-001",
+  "title": "Spring self invocation causes transaction bypass",
+  "category": "RELIABILITY",
+  "description": "OrderService calls a @Transactional method through this, so Spring proxy transaction management is bypassed.",
+  "repo": "demo-order-service",
+  "prNumber": 101,
+  "changedFiles": [
+    {
+      "filename": "src/main/java/com/demo/order/OrderService.java",
+      "status": "modified",
+      "additions": 12,
+      "deletions": 2,
+      "changes": 14,
+      "patch": "@@ -20,6 +20,16 @@ public class OrderService {\n+    public void createOrder(CreateOrderRequest request) {\n+        validate(request);\n+        this.saveOrderAndInventory(request);\n+        paymentService.freeze(request.userId(), request.amount());\n+    }\n+\n+    @Transactional\n+    public void saveOrderAndInventory(CreateOrderRequest request) {\n+        orderMapper.insert(request.toOrder());\n+        inventoryService.deduct(request.skuId(), request.quantity());\n+    }\n }"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "src/main/java/com/demo/order/OrderService.java",
+      "content": "package com.demo.order;\n\nimport org.springframework.stereotype.Service;\nimport org.springframework.transaction.annotation.Transactional;\n\n@Service\npublic class OrderService {\n    private final OrderMapper orderMapper;\n    private final InventoryService inventoryService;\n    private final PaymentService paymentService;\n\n    public OrderService(OrderMapper orderMapper, InventoryService inventoryService, PaymentService paymentService) {\n        this.orderMapper = orderMapper;\n        this.inventoryService = inventoryService;\n        this.paymentService = paymentService;\n    }\n}\n"
+    }
+  ],
+  "expectedFindings": [
+    {
+      "id": "expected-transaction-self-invocation",
+      "file": "src/main/java/com/demo/order/OrderService.java",
+      "type": "RELIABILITY",
+      "level": "HIGH",
+      "title": "Transactional method is called by self invocation",
+      "keywords": ["@Transactional", "self invocation", "this.saveOrderAndInventory", "proxy", "transaction"]
+    }
+  ]
+}

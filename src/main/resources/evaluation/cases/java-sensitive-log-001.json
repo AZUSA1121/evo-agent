@@ -1,0 +1,34 @@
+{
+  "id": "java-sensitive-log-001",
+  "title": "Sensitive token is written to application logs",
+  "category": "SECURITY",
+  "description": "Login code logs access token and password-related fields.",
+  "repo": "demo-auth-service",
+  "prNumber": 108,
+  "changedFiles": [
+    {
+      "filename": "src/main/java/com/demo/auth/LoginController.java",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 0,
+      "changes": 6,
+      "patch": "@@ -22,6 +22,11 @@ public class LoginController {\n+    public LoginResponse login(@RequestBody LoginRequest request) {\n+        LoginResponse response = authService.login(request);\n+        log.info(\"login success username={} password={} token={}\", request.username(), request.password(), response.accessToken());\n+        return response;\n+    }\n }"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "src/main/java/com/demo/auth/LoginResponse.java",
+      "content": "package com.demo.auth;\n\npublic record LoginResponse(String accessToken, String refreshToken, long expiresIn) {\n}\n"
+    }
+  ],
+  "expectedFindings": [
+    {
+      "id": "expected-sensitive-log",
+      "file": "src/main/java/com/demo/auth/LoginController.java",
+      "type": "SECURITY",
+      "level": "HIGH",
+      "title": "Sensitive credentials are logged",
+      "keywords": ["password", "token", "accessToken", "log", "sensitive"]
+    }
+  ]
+}

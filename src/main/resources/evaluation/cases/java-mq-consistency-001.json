@@ -1,0 +1,34 @@
+{
+  "id": "java-mq-consistency-001",
+  "title": "MQ message is sent before database transaction commits",
+  "category": "RELIABILITY",
+  "description": "Order event is published inside the transaction before commit, which can create inconsistent downstream state.",
+  "repo": "demo-order-service",
+  "prNumber": 107,
+  "changedFiles": [
+    {
+      "filename": "src/main/java/com/demo/order/OrderEventService.java",
+      "status": "modified",
+      "additions": 11,
+      "deletions": 1,
+      "changes": 12,
+      "patch": "@@ -18,6 +18,16 @@ public class OrderEventService {\n+    @Transactional\n+    public void paySuccess(Long orderId) {\n+        orderMapper.markPaid(orderId);\n+        rabbitTemplate.convertAndSend(\"order.paid\", orderId);\n+        pointsService.addPoints(orderId);\n+    }\n }"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "src/main/java/com/demo/order/OrderEventService.java",
+      "content": "package com.demo.order;\n\n@Service\npublic class OrderEventService {\n    private final OrderMapper orderMapper;\n    private final RabbitTemplate rabbitTemplate;\n    private final PointsService pointsService;\n}\n"
+    }
+  ],
+  "expectedFindings": [
+    {
+      "id": "expected-mq-before-commit",
+      "file": "src/main/java/com/demo/order/OrderEventService.java",
+      "type": "RELIABILITY",
+      "level": "HIGH",
+      "title": "Message may be published before transaction commit",
+      "keywords": ["RabbitMQ", "transaction", "before commit", "afterCommit", "outbox"]
+    }
+  ]
+}
