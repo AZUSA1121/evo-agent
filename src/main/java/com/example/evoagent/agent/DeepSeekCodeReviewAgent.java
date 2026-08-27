@@ -2,6 +2,8 @@ package com.example.evoagent.agent;
 
 import com.example.evoagent.github.PullRequestFile;
 import com.example.evoagent.rag.ReviewContext;
+import com.example.evoagent.skill.AgentSkill;
+import com.example.evoagent.skill.SkillPromptService;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -10,9 +12,14 @@ import java.util.List;
 public class DeepSeekCodeReviewAgent {
 
     private final DeepSeekClient deepSeekClient;
+    private final SkillPromptService skillPromptService;
 
-    public DeepSeekCodeReviewAgent(DeepSeekClient deepSeekClient) {
+    public DeepSeekCodeReviewAgent(
+            DeepSeekClient deepSeekClient,
+            SkillPromptService skillPromptService
+    ) {
         this.deepSeekClient = deepSeekClient;
+        this.skillPromptService = skillPromptService;
     }
 
     public DeepSeekReviewResponse review(List<PullRequestFile> files, ReviewContext reviewContext) {
@@ -93,6 +100,13 @@ public class DeepSeekCodeReviewAgent {
                 如果没有发现明确问题，也必须给出有信息量的中文 summary、keyChanges 和 testSuggestions，findings 返回空数组。
                 不要编造不存在的 bug。只有证据明确时才放入 findings。
 
+                当前激活的审查 Skills：
+                """);
+
+        appendActiveSkills(prompt);
+
+        prompt.append("""
+
                 检索到的源码上下文：
                 """);
 
@@ -117,5 +131,33 @@ public class DeepSeekCodeReviewAgent {
         }
 
         return prompt.toString();
+    }
+
+    private void appendActiveSkills(StringBuilder prompt) {
+        List<AgentSkill> activeSkills = skillPromptService.currentPromptSkills();
+        if (activeSkills.isEmpty()) {
+            prompt.append("\n当前没有激活 Skills。\n");
+            return;
+        }
+
+        for (AgentSkill skill : activeSkills) {
+            prompt.append("\n\n--- SKILL: ")
+                    .append(skill.name())
+                    .append(" v")
+                    .append(skill.version())
+                    .append(" ---\n");
+            prompt.append("Category: ").append(nullToText(skill.category())).append("\n");
+            prompt.append("Description: ").append(nullToText(skill.description())).append("\n");
+            prompt.append("Source: ").append(skill.source()).append("\n");
+            if (skill.sourceCaseId() != null && !skill.sourceCaseId().isBlank()) {
+                prompt.append("Source Case: ").append(skill.sourceCaseId()).append("\n");
+            }
+            prompt.append("\n");
+            prompt.append(nullToText(skill.content())).append("\n");
+        }
+    }
+
+    private String nullToText(String value) {
+        return value == null || value.isBlank() ? "N/A" : value;
     }
 }
