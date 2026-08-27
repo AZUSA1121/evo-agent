@@ -47,6 +47,8 @@ public class SkillAutoActivationService {
         String reason = buildReason(baselineRun.metrics(), candidateRun.metrics(), shouldActivate);
         if (shouldActivate) {
             skillService.activate(skillId);
+        } else {
+            skillService.reject(skillId);
         }
 
         return new SkillActivationDecision(
@@ -63,9 +65,6 @@ public class SkillAutoActivationService {
     }
 
     private EvaluationRun runScopedEvaluation(AgentSkill skill) {
-        if (skill.sourceCaseId() != null && !skill.sourceCaseId().isBlank()) {
-            return evaluationRunnerService.runSingleCase(skill.sourceCaseId());
-        }
         return evaluationRunnerService.runAllCases();
     }
 
@@ -77,14 +76,12 @@ public class SkillAutoActivationService {
         boolean recallNotWorse = candidate.recall() >= baseline.recall();
         boolean highRiskRecallNotWorse = candidate.highRiskRecall() >= baseline.highRiskRecall();
         boolean precisionAcceptable = candidate.precision() >= baseline.precision() - MAX_PRECISION_DROP;
-        boolean f1ImprovedOrEqual = candidate.f1() >= baseline.f1();
-        boolean fixedMoreCases = candidate.passedCases() >= baseline.passedCases();
+        boolean f1Improved = candidate.f1() > baseline.f1();
 
         return recallNotWorse
                 && highRiskRecallNotWorse
                 && precisionAcceptable
-                && f1ImprovedOrEqual
-                && fixedMoreCases;
+                && f1Improved;
     }
 
     private String buildReason(

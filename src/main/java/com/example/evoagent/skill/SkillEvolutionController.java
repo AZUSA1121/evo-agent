@@ -13,15 +13,18 @@ public class SkillEvolutionController {
     private final FailureAnalyzerService failureAnalyzerService;
     private final SkillGeneratorService skillGeneratorService;
     private final SkillAutoActivationService skillAutoActivationService;
+    private final SkillEvolutionPipelineService pipelineService;
 
     public SkillEvolutionController(
             FailureAnalyzerService failureAnalyzerService,
             SkillGeneratorService skillGeneratorService,
-            SkillAutoActivationService skillAutoActivationService
+            SkillAutoActivationService skillAutoActivationService,
+            SkillEvolutionPipelineService pipelineService
     ) {
         this.failureAnalyzerService = failureAnalyzerService;
         this.skillGeneratorService = skillGeneratorService;
         this.skillAutoActivationService = skillAutoActivationService;
+        this.pipelineService = pipelineService;
     }
 
     @GetMapping("/analysis")
@@ -40,5 +43,12 @@ public class SkillEvolutionController {
     @PostMapping("/evaluate-and-activate")
     public SkillActivationDecision evaluateAndActivate(@RequestParam String skillId) {
         return skillAutoActivationService.evaluateAndMaybeActivate(skillId);
+    }
+
+    @PostMapping("/run")
+    public SkillEvolutionPipelineRun runPipeline(
+            @RequestParam(defaultValue = "true") boolean includeUnexpectedFindings
+    ) {
+        return pipelineService.run(includeUnexpectedFindings);
     }
 }
