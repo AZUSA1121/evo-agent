@@ -1,0 +1,25 @@
+{
+  "id": "java-clean-test-001",
+  "title": "Clean PR adds unit tests for price calculation",
+  "category": "CLEAN",
+  "description": "A test-only change that should not produce risk findings.",
+  "repo": "demo-catalog-service",
+  "prNumber": 110,
+  "changedFiles": [
+    {
+      "filename": "src/test/java/com/demo/catalog/PriceCalculatorTest.java",
+      "status": "added",
+      "additions": 24,
+      "deletions": 0,
+      "changes": 24,
+      "patch": "@@ -0,0 +1,24 @@\n+class PriceCalculatorTest {\n+    @Test\n+    void appliesMemberDiscount() {\n+        PriceCalculator calculator = new PriceCalculator();\n+        BigDecimal result = calculator.calculate(new BigDecimal(\"100.00\"), true);\n+        assertThat(result).isEqualByComparingTo(\"90.00\");\n+    }\n+\n+    @Test\n+    void keepsOriginalPriceForGuest() {\n+        PriceCalculator calculator = new PriceCalculator();\n+        BigDecimal result = calculator.calculate(new BigDecimal(\"100.00\"), false);\n+        assertThat(result).isEqualByComparingTo(\"100.00\");\n+    }\n+}\n"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "src/main/java/com/demo/catalog/PriceCalculator.java",
+      "content": "package com.demo.catalog;\n\npublic class PriceCalculator {\n    public BigDecimal calculate(BigDecimal price, boolean member) {\n        if (member) {\n            return price.multiply(new BigDecimal(\"0.90\"));\n        }\n        return price;\n    }\n}\n"
+    }
+  ],
+  "expectedFindings": []
+}

@@ -1,0 +1,25 @@
+{
+  "id": "java-clean-refactor-001",
+  "title": "Clean refactor extracts validation method",
+  "category": "CLEAN",
+  "description": "A simple validation refactor with no expected security, reliability, or performance issue.",
+  "repo": "demo-order-service",
+  "prNumber": 109,
+  "changedFiles": [
+    {
+      "filename": "src/main/java/com/demo/order/OrderValidator.java",
+      "status": "modified",
+      "additions": 10,
+      "deletions": 6,
+      "changes": 16,
+      "patch": "@@ -8,12 +8,16 @@ public class OrderValidator {\n+    public void validate(CreateOrderRequest request) {\n+        requirePositiveQuantity(request.quantity());\n+        requirePresent(request.skuId(), \"skuId\");\n+    }\n+\n+    private void requirePositiveQuantity(int quantity) {\n+        if (quantity <= 0) {\n+            throw new IllegalArgumentException(\"quantity must be positive\");\n+        }\n+    }\n }"
+    }
+  ],
+  "contextFiles": [
+    {
+      "path": "src/main/java/com/demo/order/OrderValidator.java",
+      "content": "package com.demo.order;\n\n@Component\npublic class OrderValidator {\n    private void requirePresent(Object value, String field) {\n        if (value == null) {\n            throw new IllegalArgumentException(field + \" is required\");\n        }\n    }\n}\n"
+    }
+  ],
+  "expectedFindings": []
+}
