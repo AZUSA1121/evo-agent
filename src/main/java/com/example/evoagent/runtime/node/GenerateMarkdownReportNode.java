@@ -4,6 +4,7 @@ import com.example.evoagent.report.ReviewMarkdownGenerator;
 import com.example.evoagent.agent.DeepSeekReviewResponse;
 import com.example.evoagent.review.Finding;
 import com.example.evoagent.review.ReviewReport;
+import com.example.evoagent.review.ReviewReportRepository;
 import com.example.evoagent.runtime.AgentTask;
 import com.example.evoagent.runtime.RuntimeContext;
 import com.example.evoagent.runtime.RuntimeNode;
@@ -17,9 +18,14 @@ import java.util.List;
 public class GenerateMarkdownReportNode implements RuntimeNode {
 
     private final ReviewMarkdownGenerator markdownGenerator;
+    private final ReviewReportRepository reviewReportRepository;
 
-    public GenerateMarkdownReportNode(ReviewMarkdownGenerator markdownGenerator) {
+    public GenerateMarkdownReportNode(
+            ReviewMarkdownGenerator markdownGenerator,
+            ReviewReportRepository reviewReportRepository
+    ) {
         this.markdownGenerator = markdownGenerator;
+        this.reviewReportRepository = reviewReportRepository;
     }
 
     @Override
@@ -77,6 +83,7 @@ public class GenerateMarkdownReportNode implements RuntimeNode {
         );
 
         String markdown = appendRuntimeMetadata(markdownGenerator.generate(report), task);
+        reviewReportRepository.save(task, report, markdown);
         context.setReviewReport(report);
         context.setMarkdownReport(markdown);
         return "markdownLength=%d findings=%d".formatted(markdown.length(), findings.size());
