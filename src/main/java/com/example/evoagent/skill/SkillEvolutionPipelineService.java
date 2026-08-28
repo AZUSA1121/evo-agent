@@ -16,17 +16,20 @@ public class SkillEvolutionPipelineService {
     private final FailureAnalyzerService failureAnalyzerService;
     private final SkillGeneratorService skillGeneratorService;
     private final SkillAutoActivationService skillAutoActivationService;
+    private final SkillEvolutionPipelineRunRepository pipelineRunRepository;
 
     public SkillEvolutionPipelineService(
             EvaluationRunnerService evaluationRunnerService,
             FailureAnalyzerService failureAnalyzerService,
             SkillGeneratorService skillGeneratorService,
-            SkillAutoActivationService skillAutoActivationService
+            SkillAutoActivationService skillAutoActivationService,
+            SkillEvolutionPipelineRunRepository pipelineRunRepository
     ) {
         this.evaluationRunnerService = evaluationRunnerService;
         this.failureAnalyzerService = failureAnalyzerService;
         this.skillGeneratorService = skillGeneratorService;
         this.skillAutoActivationService = skillAutoActivationService;
+        this.pipelineRunRepository = pipelineRunRepository;
     }
 
     public SkillEvolutionPipelineRun run(boolean includeUnexpectedFindings) {
@@ -39,6 +42,26 @@ public class SkillEvolutionPipelineService {
                 baselineRun.id(),
                 includeUnexpectedFindings
         );
+        if (generation.generatedSkillCount() == 0) {
+            return pipelineRunRepository.save(new SkillEvolutionPipelineRun(
+                    pipelineRunId,
+                    "NO_SKILL_GENERATED",
+                    baselineRun.id(),
+                    baselineRun.id(),
+                    analysis.failureItemCount(),
+                    0,
+                    0,
+                    0,
+                    baselineRun.metrics(),
+                    baselineRun.metrics(),
+                    analysis,
+                    generation,
+                    List.of(),
+                    startedAt,
+                    Instant.now()
+            ));
+        }
+
         List<SkillActivationDecision> decisions = generation.generatedSkills().stream()
                 .map(skill -> skillAutoActivationService.evaluateAndMaybeActivate(skill.id()))
                 .toList();
@@ -49,7 +72,7 @@ public class SkillEvolutionPipelineService {
                 .count();
         int rejectedSkillCount = decisions.size() - activatedSkillCount;
 
-        return new SkillEvolutionPipelineRun(
+        return pipelineRunRepository.save(new SkillEvolutionPipelineRun(
                 pipelineRunId,
                 "SUCCEEDED",
                 baselineRun.id(),
@@ -65,7 +88,7 @@ public class SkillEvolutionPipelineService {
                 decisions,
                 startedAt,
                 Instant.now()
-        );
+        ));
     }
 
     private EvaluationRun requireSucceeded(EvaluationRun run, String stageName) {
