@@ -208,6 +208,13 @@ input:focus {
   padding: 16px 32px 32px;
 }
 
+.skills-workspace {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px 32px 32px;
+}
+
 .task-list-panel,
 .detail-panel,
 .placeholder-panel {
@@ -409,6 +416,39 @@ input:focus {
   border-top: 1px solid var(--border);
 }
 
+.report-summary-panel {
+  padding-bottom: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.linked-report .summary-grid {
+  padding-bottom: 8px;
+}
+
+.report-summary-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.markdown-preview {
+  max-height: 520px;
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, SFMono, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .trace-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -476,6 +516,245 @@ input:focus {
   color: var(--danger);
 }
 
+.skill-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.skill-counts .summary-item {
+  padding: 10px;
+}
+
+.skill-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.skill-main {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.skill-main h4 {
+  overflow: hidden;
+  margin-bottom: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-main p {
+  display: -webkit-box;
+  margin-bottom: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.switch-row {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.switch-row input {
+  width: 16px;
+  min-height: 16px;
+}
+
+.metrics-panel {
+  padding-bottom: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.metric-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--canvas);
+}
+
+.metric-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.metric-card strong {
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, SFMono, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metric-card small {
+  color: var(--subtle);
+  font-weight: 700;
+}
+
+.metric-card small.positive {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.metric-card small.negative {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.decision-row h4 {
+  margin-bottom: 6px;
+}
+
+.decision-row p {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.case-row {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.case-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.case-header h4 {
+  margin-bottom: 4px;
+}
+
+.case-header p {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.case-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.case-counts span {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.finding-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.finding-column {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--canvas);
+}
+
+.finding-column h4 {
+  margin-bottom: 8px;
+}
+
+.finding-item {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.finding-item strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.finding-item span,
+.muted-text {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.history-panel {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.history-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  color: inherit;
+  text-align: left;
+}
+
+.history-row:hover,
+.history-row.selected {
+  background: var(--canvas);
+}
+
+.history-row > span:last-child {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .placeholder-panel {
   margin: 16px 32px 32px;
   padding: 28px;
@@ -511,12 +790,18 @@ input:focus {
     grid-template-columns: 1fr;
   }
 
+  .skills-workspace {
+    grid-template-columns: 1fr;
+  }
+
   .task-list-panel {
     min-height: auto;
   }
 
   .summary-grid,
-  .placeholder-grid {
+    .placeholder-grid,
+    .metric-grid,
+    .finding-columns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -525,6 +810,7 @@ input:focus {
   .topbar,
   .tabs,
   .workspace,
+  .skills-workspace,
   .placeholder-panel {
     padding-right: 16px;
     padding-left: 16px;
@@ -532,18 +818,28 @@ input:focus {
 
   .token-row,
   .detail-actions,
-  .trace-right {
+  .trace-right,
+  .decision-row {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
   }
 
   .summary-grid,
-  .placeholder-grid {
+  .placeholder-grid,
+  .metric-grid,
+  .skill-counts,
+  .finding-columns {
     grid-template-columns: 1fr;
   }
 
-  .trace-row {
+  .trace-row,
+  .case-header {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-row {
+    display: grid;
     grid-template-columns: 1fr;
   }
 }

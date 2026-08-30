@@ -26,7 +26,9 @@ public class RuntimeApiTokenFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/api/runtime/");
+        String requestUri = request.getRequestURI();
+        return !requestUri.startsWith("/api/runtime/")
+                && !requestUri.startsWith("/api/reports");
     }
 
     @Override
