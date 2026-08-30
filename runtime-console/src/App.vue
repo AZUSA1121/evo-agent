@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 const tabs = [
   { id: 'tasks', label: 'Tasks' },
+  { id: 'reports', label: 'Reports' },
   { id: 'evaluations', label: 'Evaluations' },
   { id: 'skills', label: 'Skills' },
 ]
@@ -15,8 +16,14 @@ const selectedTask = ref(null)
 const trace = ref([])
 const loadingTasks = ref(false)
 const loadingTrace = ref(false)
+const selectedTaskReport = ref(null)
+const loadingTaskReport = ref(false)
 const retrying = ref(false)
 const errorMessage = ref('')
+const reports = ref([])
+const selectedReport = ref(null)
+const loadingReports = ref(false)
+const reportErrorMessage = ref('')
 const skills = ref([])
 const loadingSkills = ref(false)
 const runningEvolution = ref(false)
@@ -59,6 +66,9 @@ function switchTab(tabId) {
   if (tabId === 'evaluations') {
     loadEvaluationRuns()
   }
+  if (tabId === 'reports') {
+    loadReports()
+  }
   if (tabId === 'skills') {
     loadSkills()
     loadPipelineRuns()
@@ -98,6 +108,7 @@ async function loadTasks() {
       await selectTask(loadedTasks[0])
     } else if (selectedTask.value) {
       await loadTrace(selectedTask.value)
+      await loadTaskReport(selectedTask.value)
     }
   } catch (error) {
     errorMessage.value = error.message
@@ -109,6 +120,7 @@ async function loadTasks() {
 async function selectTask(task) {
   selectedTask.value = task
   await loadTrace(task)
+  await loadTaskReport(task)
 }
 
 async function loadTrace(task) {
@@ -128,6 +140,22 @@ async function loadTrace(task) {
   }
 }
 
+async function loadTaskReport(task) {
+  if (!task || !ensureToken()) {
+    return
+  }
+
+  loadingTaskReport.value = true
+  selectedTaskReport.value = null
+  try {
+    selectedTaskReport.value = await apiGet(`/api/reports/by-task/${task.id}`)
+  } catch (error) {
+    selectedTaskReport.value = null
+  } finally {
+    loadingTaskReport.value = false
+  }
+}
+
 async function retryTask(task) {
   if (!task || !ensureToken()) {
     return
@@ -143,6 +171,43 @@ async function retryTask(task) {
   } finally {
     retrying.value = false
   }
+}
+
+async function loadReports() {
+  if (!ensureToken()) {
+    return
+  }
+
+  loadingReports.value = true
+  reportErrorMessage.value = ''
+  try {
+    reports.value = await apiGet('/api/reports')
+    if (selectedReport.value) {
+      selectedReport.value = reports.value.find((report) => report.id === selectedReport.value.id) || null
+    }
+    if (!selectedReport.value && reports.value.length > 0) {
+      selectedReport.value = reports.value[0]
+    }
+  } catch (error) {
+    reports.value = []
+    reportErrorMessage.value = error.message
+  } finally {
+    loadingReports.value = false
+  }
+}
+
+function selectReport(report) {
+  selectedReport.value = report
+}
+
+async function openTaskReport(report) {
+  if (!report) {
+    return
+  }
+  selectedReport.value = report
+  activeTab.value = 'reports'
+  await loadReports()
+  selectedReport.value = reports.value.find((item) => item.id === report.id) || report
 }
 
 async function loadSkills() {
@@ -353,6 +418,24 @@ function findingMeta(finding) {
   }
   return `${finding.level || 'N/A'} · ${finding.type || 'N/A'} · ${finding.file || 'N/A'}`
 }
+
+function reportFindingCount(report) {
+  return report?.findings?.length || 0
+}
+
+function reportRiskClass(riskLevel) {
+  const normalized = (riskLevel || 'unknown').toLowerCase()
+  if (normalized === 'high') {
+    return 'failed'
+  }
+  if (normalized === 'medium') {
+    return 'running'
+  }
+  if (normalized === 'low' || normalized === 'none') {
+    return 'succeeded'
+  }
+  return 'pending'
+}
 </script>
 
 <template>
@@ -475,6 +558,55 @@ function findingMeta(finding) {
 
             <div v-if="selectedTask.errorMessage" class="notice error">{{ selectedTask.errorMessage }}</div>
 
+            <section class="report-summary-panel">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Review Report</h3>
+                  <p>Final PR review output linked to this runtime task.</p>
+                </div>
+                <button
+                  v-if="selectedTaskReport"
+                  class="btn"
+                  type="button"
+                  @click="openTaskReport(selectedTaskReport)"
+                >
+                  Open Report
+                </button>
+              </div>
+
+              <div v-if="loadingTaskReport" class="empty-state">
+                Loading linked review report.
+              </div>
+
+              <div v-else-if="!selectedTaskReport" class="empty-state">
+                No review report generated for this task yet.
+              </div>
+
+              <div v-else class="linked-report">
+                <div class="summary-grid">
+                  <div class="summary-item">
+                    <span>Risk Level</span>
+                    <strong :class="['status-text', reportRiskClass(selectedTaskReport.riskLevel)]">
+                      {{ selectedTaskReport.riskLevel || 'N/A' }}
+                    </strong>
+                  </div>
+                  <div class="summary-item">
+                    <span>Findings</span>
+                    <strong>{{ reportFindingCount(selectedTaskReport) }}</strong>
+                  </div>
+                  <div class="summary-item">
+                    <span>Changed Files</span>
+                    <strong>{{ selectedTaskReport.changedFileCount }}</strong>
+                  </div>
+                  <div class="summary-item">
+                    <span>Created</span>
+                    <strong>{{ formatDate(selectedTaskReport.createdAt) }}</strong>
+                  </div>
+                </div>
+                <p class="report-summary-text">{{ selectedTaskReport.aiSummary || selectedTaskReport.summary }}</p>
+              </div>
+            </section>
+
             <section class="trace-panel">
               <div class="panel-header compact">
                 <div>
@@ -505,6 +637,145 @@ function findingMeta(finding) {
                 <pre v-if="execution.output" class="trace-output">{{ execution.output }}</pre>
                 <pre v-if="execution.errorMessage" class="trace-output error-text">{{ execution.errorMessage }}</pre>
               </div>
+            </section>
+          </template>
+        </section>
+      </section>
+
+      <section v-if="activeTab === 'reports'" class="workspace">
+        <aside class="task-list-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Review Reports</h2>
+              <p>{{ reports.length }} saved report{{ reports.length === 1 ? '' : 's' }}</p>
+            </div>
+            <button class="btn" type="button" :disabled="loadingReports" @click="loadReports">
+              {{ loadingReports ? 'Loading' : 'Refresh' }}
+            </button>
+          </div>
+
+          <div v-if="reportErrorMessage" class="notice error">{{ reportErrorMessage }}</div>
+          <div v-if="!token" class="notice">Enter your runtime token to load protected review reports.</div>
+          <div v-if="reports.length === 0 && !loadingReports" class="empty-state">No review reports yet.</div>
+
+          <button
+            v-for="report in reports"
+            :key="report.id"
+            type="button"
+            :class="['task-row', { selected: selectedReport && selectedReport.id === report.id }]"
+            @click="selectReport(report)"
+          >
+            <span class="task-main">
+              <span class="task-title">{{ report.repo }} #{{ report.prNumber }}</span>
+              <span class="task-meta">
+                {{ report.taskRef || 'no-task' }} · {{ reportFindingCount(report) }} finding{{ reportFindingCount(report) === 1 ? '' : 's' }}
+              </span>
+            </span>
+            <span :class="['status-badge', reportRiskClass(report.riskLevel)]">
+              {{ report.riskLevel || 'N/A' }}
+            </span>
+          </button>
+        </aside>
+
+        <section class="detail-panel">
+          <div v-if="!selectedReport" class="empty-detail">
+            <h2>Select a report</h2>
+            <p>Choose a PR review report to inspect risk level, findings, context, and generated Markdown.</p>
+          </div>
+
+          <template v-else>
+            <div class="detail-header">
+              <div>
+                <p class="eyebrow">Report {{ truncateId(selectedReport.id) }}</p>
+                <h2>{{ selectedReport.repo }} PR #{{ selectedReport.prNumber }}</h2>
+                <p class="subtitle">Task Ref {{ selectedReport.taskRef || 'N/A' }} · {{ formatDate(selectedReport.createdAt) }}</p>
+              </div>
+
+              <span :class="['status-badge', reportRiskClass(selectedReport.riskLevel)]">
+                {{ selectedReport.riskLevel || 'N/A' }}
+              </span>
+            </div>
+
+            <div class="summary-grid">
+              <div class="summary-item">
+                <span>Status</span>
+                <strong>{{ selectedReport.status }}</strong>
+              </div>
+              <div class="summary-item">
+                <span>Findings</span>
+                <strong>{{ reportFindingCount(selectedReport) }}</strong>
+              </div>
+              <div class="summary-item">
+                <span>Changed Files</span>
+                <strong>{{ selectedReport.changedFileCount }}</strong>
+              </div>
+              <div class="summary-item">
+                <span>Additions / Deletions</span>
+                <strong>{{ selectedReport.totalAdditions }} / {{ selectedReport.totalDeletions }}</strong>
+              </div>
+            </div>
+
+            <section class="trace-panel">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Summary</h3>
+                  <p>{{ selectedReport.summary }}</p>
+                </div>
+              </div>
+              <p class="report-summary-text">{{ selectedReport.aiSummary || 'No AI summary provided.' }}</p>
+
+              <div class="finding-columns">
+                <div class="finding-column">
+                  <h4>Key Changes</h4>
+                  <p v-if="!selectedReport.keyChanges?.length" class="muted-text">None</p>
+                  <div v-for="change in selectedReport.keyChanges" :key="change" class="finding-item">
+                    <strong>{{ change }}</strong>
+                  </div>
+                </div>
+
+                <div class="finding-column">
+                  <h4>Test Suggestions</h4>
+                  <p v-if="!selectedReport.testSuggestions?.length" class="muted-text">None</p>
+                  <div v-for="suggestion in selectedReport.testSuggestions" :key="suggestion" class="finding-item">
+                    <strong>{{ suggestion }}</strong>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="trace-panel">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Findings</h3>
+                  <p>{{ reportFindingCount(selectedReport) }} issue{{ reportFindingCount(selectedReport) === 1 ? '' : 's' }} found by the review agent.</p>
+                </div>
+              </div>
+
+              <div v-if="!selectedReport.findings?.length" class="empty-state">
+                No findings in this report.
+              </div>
+
+              <div v-for="finding in selectedReport.findings" :key="finding.title + finding.file + finding.line" class="case-row">
+                <div class="case-header">
+                  <div>
+                    <h4>{{ finding.title || 'Untitled finding' }}</h4>
+                    <p>{{ finding.file || 'N/A' }}:{{ finding.line || 'N/A' }} · {{ finding.type || 'N/A' }}</p>
+                  </div>
+                  <span :class="['status-badge', reportRiskClass(finding.level)]">{{ finding.level || 'N/A' }}</span>
+                </div>
+                <p class="report-summary-text">{{ finding.evidence || 'No evidence provided.' }}</p>
+                <p class="report-summary-text">{{ finding.suggestion || 'No suggestion provided.' }}</p>
+              </div>
+            </section>
+
+            <section class="trace-panel">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Markdown Report</h3>
+                  <p>Exact content generated for the GitHub PR comment.</p>
+                </div>
+              </div>
+              <pre class="markdown-preview">{{ selectedReport.markdown || 'No markdown saved.' }}</pre>
             </section>
           </template>
         </section>

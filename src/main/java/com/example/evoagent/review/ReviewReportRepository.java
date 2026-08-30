@@ -101,13 +101,13 @@ public class ReviewReportRepository {
         return report;
     }
 
-    public List<ReviewReport> findAll() {
+    public List<ReviewReportView> findAll() {
         return jdbcClient.sql("SELECT * FROM review_report ORDER BY created_at DESC")
-                .query(this::mapReport)
+                .query(this::mapReportView)
                 .list();
     }
 
-    public List<ReviewReport> findByRepositoryAndPullRequest(String repo, int prNumber) {
+    public List<ReviewReportView> findByRepositoryAndPullRequest(String repo, int prNumber) {
         return jdbcClient.sql("""
                         SELECT *
                         FROM review_report
@@ -116,11 +116,11 @@ public class ReviewReportRepository {
                         """)
                 .param("repo", repo)
                 .param("prNumber", prNumber)
-                .query(this::mapReport)
+                .query(this::mapReportView)
                 .list();
     }
 
-    public Optional<ReviewReport> findLatestByTaskId(String taskId) {
+    public Optional<ReviewReportView> findLatestByTaskId(String taskId) {
         return jdbcClient.sql("""
                         SELECT *
                         FROM review_report
@@ -129,12 +129,16 @@ public class ReviewReportRepository {
                         LIMIT 1
                         """)
                 .param("taskId", taskId)
-                .query(this::mapReport)
+                .query(this::mapReportView)
                 .optional();
     }
 
-    private ReviewReport mapReport(ResultSet rs, int rowNum) throws SQLException {
-        return new ReviewReport(
+    private ReviewReportView mapReportView(ResultSet rs, int rowNum) throws SQLException {
+        String taskId = rs.getString("task_id");
+        return new ReviewReportView(
+                rs.getString("id"),
+                taskId,
+                taskRef(taskId),
                 rs.getString("repo"),
                 rs.getInt("pr_number"),
                 rs.getString("status"),
@@ -149,6 +153,7 @@ public class ReviewReportRepository {
                 readJsonList(rs.getString("context_files")),
                 readPullRequestFiles(rs.getString("changed_files")),
                 readFindings(rs.getString("findings")),
+                rs.getString("markdown"),
                 toInstant(rs, "created_at")
         );
     }
@@ -201,5 +206,12 @@ public class ReviewReportRepository {
 
     private Timestamp timestamp(Instant instant) {
         return instant == null ? null : Timestamp.from(instant);
+    }
+
+    private String taskRef(String taskId) {
+        if (taskId == null || taskId.length() <= 8) {
+            return taskId;
+        }
+        return taskId.substring(0, 8);
     }
 }
